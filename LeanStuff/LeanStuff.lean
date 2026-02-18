@@ -181,7 +181,7 @@ def BTree.insert [Ord α] (x : α) (hx : P x) :
   | .leaf => .node x hx .leaf .leaf
   | .node v hv left right =>
     match hc : compare x v with
-    | .lt => .node v hv (left.insert x ⟨hx, hc⟩) right
+    | .lt => .node v hv (left.insert x ⟨hx,hc⟩) right
     | .eq => .node v hv left right
     | .gt => .node v hv left (right.insert x ⟨hx, hc⟩)
 
@@ -192,78 +192,54 @@ def BTree.insert [Ord α] (x : α) (hx : P x) :
 With intrinsic verification the *type itself* forbids unsorted lists.
 
 Unlike `BTree`, which indexes by a predicate `P`, we index by a
-lower bound drawn from `ENat` — natural numbers extended with a
-bottom element `.bot` that is ≤ everything.  `SList lb` is a sorted
-list whose elements are all ≥ `lb`:
+`Nat` lower bound.  `SList lb` is a sorted list whose elements are
+all ≥ `lb`:
 
-  • `SList .bot`      — no lower bound (a fresh sorted list)
-  • `SList (.val n)`  — every element must be ≥ `n`
+  • `SList n`  — every element is ≥ `n`, and only values ≤ `n` can
+                  be consed in front (since `cons` requires `new ≤ old`)
+  • `SList 0`  — the most restrictive case: nothing except 0 can be
+                  directly prepended
 
-When we cons a value `v`, the tail becomes `SList (.val v)`,
-automatically enforcing that all subsequent elements are at least `v`.
+When we cons a value `v`, the tail becomes `SList v`, automatically
+enforcing that all subsequent elements are at least `v`.
 
-The predicate-accumulation approach from `BTree` *works* for lists,
-but it requires a `comap` operation to re-tag the entire tail when
-inserting at the front — because changing what comes before an element
-changes the accumulated predicate of everything after it.  Trees don't
-have this problem since left and right subtrees are independent.
-
-A lower bound avoids this: inserting `x` before `v` doesn't change the
-tail's type (`SList (.val v)`), so the tail is used as-is with no
-re-tagging.  Different data structures call for different encodings.
+The last argument `any ≤ new` (or `any ≤ x` in `singleton`) acts as a
+type-cast: it lets us produce an `SList any` for any `any` that is at
+most the head element.  Without it, `cons` could only return `SList new`,
+but during insertion we need to return `SList (min lb x)`, which may be
+smaller than the head.  The proof witness bridges that gap.
 -/
 
-inductive ENat where
-  | val : Nat → ENat
-  | bot : ENat
+inductive SList : Nat → Type where
+  | singleton : (x : Nat) → (any ≤ x) → SList any
+  | cons : (new : Nat) → new ≤ old → SList old → (any ≤ new) → SList any
 
-instance : OfNat ENat n := ⟨.val n⟩
+-- Bonus HW: Find the function.
+def SList.insert (x : Nat) (l : SList lb) : SList (min lb x) :=
+  by sorry
 
-instance : LE ENat where
-  le a b := match a, b with
-    | .val m, .val n => m ≤ n
-    | .bot,   _      => True
-    | .val _, .bot   => False
+def SList.toList (l : SList v) : List Nat :=
+  match l with
+  | .singleton v _ => [v]
+  | .cons new _ old _ => [new] ++ old.toList
 
-instance (a b : ENat) : Decidable (a ≤ b) :=
-  match a, b with
-  | .val m, .val n => if h : m ≤ n then .isTrue h else .isFalse h
-  | .bot,   _      => .isTrue trivial
-  | .val _, .bot   => .isFalse not_false
+-- Minor Issue: With SList 0 as a return type we
+-- can no longer append to the list.
+def List.fromList (l : List Nat) : SList 0 :=
+  match l with
+  | v :: xs =>
+    xs.foldr (fun x acc =>
+       acc.insert x
+    ) (.singleton v (by omega))
 
-@[simp] theorem ENat.val_le_val : (ENat.val m ≤ ENat.val n) = (m ≤ n) := rfl
+  | [] => .singleton 0 (by omega) -- This is ugly
 
-inductive SList : ENat → Type where
-  | nil  : SList lb
-  | cons : (v : Nat) → lb ≤ .val v → SList (.val v) → SList lb
+def test := [1,2,10,3].fromList
 
-abbrev SortedList := SList .bot
+-- #eval test.toList
 
-def SList.insert (x : Nat) (hx : lb ≤ .val x) :
-    SList lb → SList lb
-  | .nil => .cons x hx .nil
-  | .cons v hv tail =>
-    if hlt : x ≤ v then
-      .cons x hx (.cons v (by omega) tail)
-    else
-      .cons v hv (tail.insert x (by simp_all; omega))
+def ex := SList.singleton (any := 2) 2 (by grind) |> SList.insert 5 |> SList.insert 6 |> SList.insert 7
 
-def SList.toList : SList P → List Nat
-  | .nil        => []
-  | .cons v _ t => v :: t.toList
+-- #eval ex.toList
 
-def mySortedList : SortedList :=
-  SList.nil
-    |>.insert 4 (by decide)
-    |>.insert 2 (by decide)
-    |>.insert 6 (by decide)
-    |>.insert 1 (by decide)
-    |>.insert 3 (by decide)
-
-#eval mySortedList.toList   -- [1, 2, 3, 4, 6]
-
-def List.sortList (xs : List Nat) : SortedList :=
-  xs.foldr (fun x acc => acc.insert x trivial) .nil
-
-def exList := [1, 3, 2, 5, 5].sortList
-#eval exList
+-- #eval ex
