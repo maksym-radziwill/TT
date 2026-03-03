@@ -218,6 +218,19 @@ inductive SList : Nat → Type where
 def SList.insert (x : Nat) (l : SList lb) : SList (min lb x) :=
   by sorry
 
+def SList.insertNice {lb : Nat} (x : Nat) (l : SList lb) : SList (min lb x) :=
+  match l with
+  | .singleton y hy =>
+    if h : x ≤ y then
+      .cons x h (.singleton y (Nat.le_refl y)) (by grind)
+    else
+      .cons y (by grind) (.singleton x (Nat.le_refl x)) (by grind)
+  | .cons y hy tail htail =>
+    if h : x ≤ y then
+      .cons x h (.cons y hy tail (Nat.le_refl y)) (by grind)
+    else
+      .cons y (by grind) (tail.insertNice x) (by grind)
+
 def SList.toList (l : SList v) : List Nat :=
   match l with
   | .singleton v _ => [v]
@@ -229,12 +242,13 @@ def List.fromList (l : List Nat) : SList 0 :=
   match l with
   | v :: xs =>
     xs.foldr (fun x acc =>
-       acc.insert x
+       acc.insertNice x
     ) (.singleton v (by omega))
 
   | [] => .singleton 0 (by omega) -- This is ugly
 
-def test := [1,2,10,3].fromList
+def test := [1,2,11, 10,3].fromList
+#eval test.toList
 
 -- #eval test.toList
 
