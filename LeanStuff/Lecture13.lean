@@ -332,3 +332,20 @@ def g' (x : Nat) : Option Nat := some (x + 100)
 #eval (some 5 >>= fun x => f' x >>= g')                  -- some 110
 
 end LawExamples
+
+@[simp,reducible] def rev (l acc : List α) : List α := match l with
+  | [] => acc
+  | h::t => rev t (h::acc)
+
+@[simp,reducible] def reverseTail (l : List α) := rev l []
+
+@[simp,reducible] def reverseNormal : List α → List α
+  | [] => []
+  | hd::tl => reverseNormal tl ++ [hd]
+
+theorem auxLemma {α} (tail hdList1 hdList2 : List α) :
+    rev tail hdList1 ++ hdList2 = rev tail (hdList1 ++ hdList2) := by
+  induction tail generalizing hdList1 hdList2 <;> simp_all
+
+theorem equivlenceOfReverse {α} (l : List α) : reverseNormal l = reverseTail l := by
+  induction l <;> simp_all [auxLemma]
