@@ -125,6 +125,33 @@ theorem zero_mul (m : N) : mul .zero m = .zero := by
     show add (mul .zero k) .zero = .zero
     rw [add_zero, ih]
 
+-- ── Multiplication is commutative ─────────────────────────
+-- Same schema as addition:
+--   add_comm needed zero_add and succ_add.
+--   mul_comm needs zero_mul and succ_mul.
+
+-- Step 1: definitional (like add_succ)
+-- mul recurs on the second argument, so this is rfl.
+theorem mul_succ (m k : N) : mul m (.succ k) = add (mul m k) m :=
+  sorry
+
+-- Step 2: by induction (like succ_add)
+-- This is the hard one. You will need add_succ, add_assoc, add_comm.
+theorem succ_mul (m k : N)
+    : mul (.succ m) k = add (mul m k) k := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    -- goal: add (mul (.succ m) k) (.succ m) = add (add (mul m k) m) (.succ k)
+    show add (mul (.succ m) k) (.succ m) = add (add (mul m k) m) (.succ k)
+    sorry
+
+-- Step 3: commutativity (like add_comm)
+theorem mul_comm (m n : N) : mul m n = mul n m := by
+  induction n with
+  | zero => sorry
+  | succ k ih => sorry
+
 -- ════════════════════════════════════════════════════════════
 -- Part III: Lists
 -- ════════════════════════════════════════════════════════════
