@@ -78,7 +78,7 @@ theorem length_map (f : A → B) (xs : MyList A)
 
 inductive Vec (A : Type) : N → Type where
   | nil  : Vec A .zero
-  | cons : A → Vec A n → Vec A (.succ n)
+  | cons {n : N} : A → Vec A n → Vec A (.succ n)
 
 -- Building vectors
 #check (Vec.nil : Vec Nat .zero)
@@ -90,6 +90,7 @@ inductive Vec (A : Type) : N → Type where
 -- The input type Vec A (.succ n) rules out nil.
 def Vec.head : Vec A (.succ n) → A
   | .cons x _ => x
+
 
 -- Tail
 def Vec.tail : Vec A (.succ n) → Vec A n
@@ -112,18 +113,19 @@ def Vec.vzip : Vec A n → Vec B n → Vec (A × B) n
 -- Using add' (recurs on FIRST arg): typechecks directly!
 -- add' .zero n ≡ n  (ι fires)
 -- add' (.succ m) n ≡ .succ (add' m n)  (ι fires)
+
 def Vec.vappend : Vec A m → Vec A n → Vec A (add' m n)
   | .nil,       ys => ys
   | .cons x xs, ys => .cons x (Vec.vappend xs ys)
 
 -- Using add (recurs on SECOND arg): DOES NOT typecheck.
 -- Uncomment to see the error:
--- def Vec.vappend_bad : Vec A m → Vec A n → Vec A (add m n)
---   | .nil,       ys => ys   -- ERROR: type mismatch
+--def Vec.vappend_bad : Vec A m → Vec A n → Vec A (add m n)
+ --  | .nil,       ys => ys   -- ERROR: type mismatch
 --       -- got:      Vec A n
 --       -- expected: Vec A (add .zero n)
 --       -- add .zero n does not reduce (ι stuck on n)
---   | .cons x xs, ys => .cons x (Vec.vappend_bad xs ys)
+ --  | .cons x xs, ys => .cons x (Vec.vappend_bad xs ys)
 
 -- --------------------------------------------------------
 -- Bridging the gap with tactic mode
@@ -221,7 +223,9 @@ def Bound.ble : Bound → Bound → Bool
   | .bot,   _      => true
   | _,      .top   => true
   | .val m, .val n => N.ble m n
-  | _,      _      => false
+  | _, .bot => false
+  | .top, .val _ => false
+
 
 -- --------------------------------------------------------
 -- The verified BST, indexed by lower and upper bounds
@@ -285,6 +289,12 @@ theorem ble_false_rev {a b : N} (h : N.ble a b = false)
     simp [N.ble] at h ⊢
     exact ih h
 
+--def test {k k'} (h : N.ble k k' = false): true = false := by
+--  rw [ble_false_rev] at h
+--  exact h
+
+--  sorry
+
 -- Dependent pattern match version of insert.
 -- We match on the Bool result of N.ble k k' and bind
 -- the equation as h, so we have a proof in each branch.
@@ -299,11 +309,13 @@ def BST.insert (k : N)
       -- h : N.ble k k' = true
       -- Bound.ble (.val k) (.val k') = N.ble k k' = true
       .node k' q1 q2 (BST.insert k p1 h left) right
-    | false =>
+    | false => by
       -- h : N.ble k k' = false
       -- ble_false_rev h : N.ble k' k = true
       -- which is Bound.ble (.val k') (.val k) = true
-      .node k' q1 q2 left (BST.insert k (ble_false_rev h) p2 right)
+        --rw [ble_false_rev] at h
+        have U := ble_false_rev h
+        exact .node k' q1 q2 left (BST.insert k U p2 right)
 
 -- --------------------------------------------------------
 -- Internalizing membership: BST indexed by a set
