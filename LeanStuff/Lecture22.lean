@@ -181,16 +181,16 @@ instance : ToString Person where
 -- ============================================================
 
 -- The Decidable class is in the standard library:
---   class inductive Decidable (p : Prop) where
---     | isFalse (h : ¬p) : Decidable p
---     | isTrue  (h : p)  : Decidable p
+   class inductive Decidable2 (p : Prop) where
+     | isFalse (h : ¬p) : Decidable2 p
+     | isTrue  (h : p)  : Decidable2 p
 -- Note: Decidable p : Type, not Prop.
 
 -- How if works (already defined in the standard library):
---   def ite (c : Prop) [h : Decidable c] (t e : α) : α :=
---     match h with
---     | .isTrue  _ => t
---     | .isFalse _ => e
+   def ite2 (c : Prop) [h : Decidable2 c] (t e : α) : α :=
+     match h with
+     | .isTrue  _ => t
+     | .isFalse _ => e
 
 -- DecidableEq and deriving
 inductive Bit : Type where
@@ -256,7 +256,7 @@ instance : Add Parity where
     | .odd,  .odd  => .even
 
 instance : ToString Parity where
-  toString | .even => "even" | .odd => "odd"
+  toString | .even => "EVEN" | .odd => "odd"
 
 instance : OfNat Parity 0 where ofNat := .even
 instance : OfNat Parity 1 where ofNat := .odd
@@ -270,4 +270,5 @@ instance : BEq Parity where
 def double [Add α] (x : α) : α := x + x
 
 #eval double (1 : Parity)          -- even (odd + odd)
-#eval (0 : Parity) + (1 : Parity)  -- odd
+#eval 1 + (Parity.odd)  -- odd
+#eval (0 : Parity)
